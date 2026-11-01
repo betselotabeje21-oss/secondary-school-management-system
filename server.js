@@ -3,25 +3,33 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const fs = require('fs');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
+const nodemailer = require('nodemailer');
+const { OAuth2Client } = require('google-auth-library');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const APP_TITLE = 'Secondary School – Student Information Management System';
 const db = new Database(path.join(__dirname, 'school.db'));
 db.pragma('journal_mode = WAL');
+db.exec('CREATE TABLE IF NOT EXISTS session_store (sid TEXT PRIMARY KEY, session_json TEXT NOT NULL, expires_at INTEGER NOT NULL)');
+db.prepare('DELETE FROM session_store WHERE expires_at <= ?').run(Date.now());
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/icons', express.static(path.join(__dirname, 'node_modules', 'lucide-static', 'icons'), { maxAge: '7d' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const profileUploadDir = path.join(uploadDir, 'profile');
+if (!fs.existsSync(profileUploadDir)) fs.mkdirSync(profileUploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: function (_, __, cb) {
@@ -34,13 +42,83 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage });
+const profileStorage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, profileUploadDir),
+  filename: (_, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname || '').toLowerCase());
+  }
+});
+const profileUpload = multer({
+  storage: profileStorage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_, file, cb) => {
+    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    const extension = path.extname(file.originalname || '').toLowerCase();
+    if (!allowed.has(file.mimetype) || !['.jpg', '.jpeg', '.png', '.webp'].includes(extension)) {
+      return cb(new Error('Choose a JPG, PNG, or WEBP image under 5 MB.'));
+    }
+    cb(null, true);
+  }
+});
+const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim() || '';
+const googleOAuthClient = googleClientId ? new OAuth2Client(googleClientId) : null;
 
-const sessionSecret = process.env.SESSION_SECRET || (process.env.NODE_ENV === 'production' ? '' : crypto.randomBytes(32).toString('hex'));
+const sessionSecret = process.env.SESSION_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'local-development-only-secret-change-before-deploy');
 if (!sessionSecret) {
   throw new Error('SESSION_SECRET must be configured when NODE_ENV=production.');
 }
 
+class SQLiteSessionStore extends session.Store {
+  constructor(database) {
+    super();
+    this.database = database;
+    this.insert = database.prepare('INSERT INTO session_store (sid, session_json, expires_at) VALUES (?, ?, ?) ON CONFLICT(sid) DO UPDATE SET session_json = excluded.session_json, expires_at = excluded.expires_at');
+    this.select = database.prepare('SELECT session_json, expires_at FROM session_store WHERE sid = ?');
+    this.remove = database.prepare('DELETE FROM session_store WHERE sid = ?');
+  }
+
+  get(sessionId, callback) {
+    try {
+      const row = this.select.get(sessionId);
+      if (!row || row.expires_at <= Date.now()) {
+        if (row) this.remove.run(sessionId);
+        return callback(null, null);
+      }
+      callback(null, JSON.parse(row.session_json));
+    } catch (error) {
+      callback(error);
+    }
+  }
+
+  set(sessionId, value, callback) {
+    try {
+      const expiry = value.cookie?.expires
+        ? new Date(value.cookie.expires).getTime()
+        : Date.now() + (value.cookie?.originalMaxAge || 12 * 60 * 60 * 1000);
+      this.insert.run(sessionId, JSON.stringify(value), expiry);
+      if (callback) callback(null);
+    } catch (error) {
+      if (callback) callback(error);
+    }
+  }
+
+  touch(sessionId, value, callback) {
+    this.set(sessionId, value, callback);
+  }
+
+  destroy(sessionId, callback) {
+    try {
+      this.remove.run(sessionId);
+      if (callback) callback(null);
+    } catch (error) {
+      if (callback) callback(error);
+    }
+  }
+}
+
 app.use(session({
+  store: new SQLiteSessionStore(db),
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
@@ -65,7 +143,7 @@ const schoolDefaults = {
   logo_path: '',
   address: 'Addis Ababa, Ethiopia',
   phone: '+251 911 000 000',
-  email: 'info@bemilew.edu',
+  email: 'info@gmail.com',
   academic_year: '2025/2026',
   pass_mark: 50,
   grading_scale: 'A:90-100,B:80-89,C:70-79,D:60-69,F:0-59'
@@ -79,7 +157,7 @@ function initializeDatabase() {
       logo_path TEXT DEFAULT '',
       address TEXT DEFAULT 'Addis Ababa, Ethiopia',
       phone TEXT DEFAULT '+251 911 000 000',
-      email TEXT DEFAULT 'info@bemilew.edu',
+      email TEXT DEFAULT 'info@gmail.com',
       academic_year TEXT DEFAULT '2025/2026',
       pass_mark INTEGER DEFAULT 50,
       grading_scale TEXT DEFAULT 'A:90-100,B:80-89,C:70-79,D:60-69,F:0-59'
@@ -93,6 +171,13 @@ function initializeDatabase() {
       role TEXT CHECK(role IN ('admin','teacher','student','parent')),
       status TEXT DEFAULT 'active',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      token_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS students (
@@ -227,6 +312,31 @@ function initializeDatabase() {
     );
   `);
 
+  const userColumns = db.prepare('PRAGMA table_info(users)').all().map((column) => column.name);
+  if (!userColumns.includes('profile_photo')) {
+    db.exec('ALTER TABLE users ADD COLUMN profile_photo TEXT');
+  }
+  if (!userColumns.includes('google_sub')) {
+    db.exec('ALTER TABLE users ADD COLUMN google_sub TEXT');
+  }
+
+  db.transaction(() => {
+    const legacyUsers = db.prepare("SELECT id, email FROM users WHERE lower(email) LIKE '%@bemilew.edu'").all();
+    for (const account of legacyUsers) {
+      const [localPart] = account.email.split('@');
+      let candidate = `${localPart}@gmail.com`;
+      let suffix = 0;
+      while (db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(candidate, account.id)) {
+        suffix += 1;
+        candidate = `${localPart}+legacy${account.id}${suffix > 1 ? `-${suffix}` : ''}@gmail.com`;
+      }
+      db.prepare('UPDATE users SET email = ? WHERE id = ?').run(candidate, account.id);
+    }
+    db.prepare("UPDATE teachers SET email = replace(email, '@bemilew.edu', '@gmail.com') WHERE lower(email) LIKE '%@bemilew.edu'").run();
+    db.prepare("UPDATE school_settings SET email = replace(email, '@bemilew.edu', '@gmail.com') WHERE lower(email) LIKE '%@bemilew.edu'").run();
+    db.prepare('UPDATE teachers SET email = (SELECT email FROM users WHERE users.id = teachers.user_id) WHERE user_id IS NOT NULL AND EXISTS (SELECT 1 FROM users WHERE users.id = teachers.user_id)').run();
+  })();
+
   const settingsCount = db.prepare('SELECT COUNT(*) AS count FROM school_settings').get().count;
   if (settingsCount === 0) {
     db.prepare('INSERT INTO school_settings (id, school_name, logo_path, address, phone, email, academic_year, pass_mark, grading_scale) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -236,10 +346,10 @@ function initializeDatabase() {
 
   if (process.env.NODE_ENV !== 'production') {
     const demoUsers = [
-      ['System Administrator', 'admin@bemilew.edu', 'Admin123!', 'admin'],
-      ['Mariam Teacher', 'teacher@bemilew.edu', 'Teacher123!', 'teacher'],
-      ['Samuel Student', 'student@bemilew.edu', 'Student123!', 'student'],
-      ['Helen Parent', 'parent@bemilew.edu', 'Parent123!', 'parent']
+      ['System Administrator', 'admin@gmail.com', 'Admin123!', 'admin'],
+      ['Mariam Teacher', 'teacher@gmail.com', 'Teacher123!', 'teacher'],
+      ['Samuel Student', 'student@gmail.com', 'Student123!', 'student'],
+      ['Helen Parent', 'parent@gmail.com', 'Parent123!', 'parent']
     ];
     const seedDemoUsers = db.transaction(() => {
       for (const [name, email, password, role] of demoUsers) {
@@ -256,10 +366,10 @@ function initializeDatabase() {
     const studentCount = db.prepare('SELECT COUNT(*) AS count FROM students').get().count;
     if (studentCount === 0) {
     const insertion = db.transaction(() => {
-      const adminId = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@bemilew.edu').id;
-      const teacherUserId = db.prepare('SELECT id FROM users WHERE email = ?').get('teacher@bemilew.edu').id;
-      const parentUserId = db.prepare('SELECT id FROM users WHERE email = ?').get('parent@bemilew.edu').id;
-      const studentUserId = db.prepare('SELECT id FROM users WHERE email = ?').get('student@bemilew.edu').id;
+      const adminId = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@gmail.com').id;
+      const teacherUserId = db.prepare('SELECT id FROM users WHERE email = ?').get('teacher@gmail.com').id;
+      const parentUserId = db.prepare('SELECT id FROM users WHERE email = ?').get('parent@gmail.com').id;
+      const studentUserId = db.prepare('SELECT id FROM users WHERE email = ?').get('student@gmail.com').id;
 
       const class1 = db.prepare('INSERT INTO classes (name, grade, section, class_teacher_id, capacity, academic_year) VALUES (?, ?, ?, ?, ?, ?)')
         .run('Grade 10 - Science', 'Grade 10', 'Science', teacherUserId, 35, '2025/2026');
@@ -290,7 +400,7 @@ function initializeDatabase() {
       db.prepare('INSERT INTO parent_students (parent_user_id, student_id) VALUES (?, ?)').run(parentUserId, studentB.lastInsertRowid);
 
       const teacherData = db.prepare('INSERT INTO teachers (teacher_id, first_name, last_name, gender, phone, email, qualification, subject, assigned_grade, status, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .run('TCH-0001', 'Mariam', 'Tekle', 'Female', '+251 923 456 999', 'teacher@bemilew.edu', 'BSc in Physics', 'Physics', 'Grade 10', 'Active', teacherUserId);
+        .run('TCH-0001', 'Mariam', 'Tekle', 'Female', '+251 923 456 999', 'teacher@gmail.com', 'BSc in Physics', 'Physics', 'Grade 10', 'Active', teacherUserId);
 
       db.prepare('INSERT INTO attendance (student_id, class_id, attendance_date, status, remark, recorded_by) VALUES (?, ?, ?, ?, ?, ?)')
         .run(studentA.lastInsertRowid, class1.lastInsertRowid, todayISO(), 'Present', 'On time', teacherUserId);
@@ -358,6 +468,70 @@ function dashboardTitleForRole(role) {
     parent: 'Parent Dashboard'
   };
   return `${APP_TITLE} — ${titles[role] || 'Dashboard'}`;
+}
+
+function normalizeEmail(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function isValidEmail(value) {
+  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function getPasswordError(password) {
+  if (typeof password !== 'string' || password.length < 10) return 'Use a password with at least 10 characters.';
+  if (password.length > 128) return 'Password must be 128 characters or fewer.';
+  return '';
+}
+
+function createAuthenticatedSession(req, user, rememberMe, callback) {
+  const userSession = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    profile_photo: user.profile_photo || ''
+  };
+  if (user.role === 'student') {
+    const profile = db.prepare('SELECT id FROM students WHERE user_id = ?').get(user.id);
+    if (profile) userSession.student_id = profile.id;
+  }
+  if (user.role === 'parent') {
+    const linked = db.prepare('SELECT student_id FROM parent_students WHERE parent_user_id = ? LIMIT 1').get(user.id);
+    if (linked) userSession.parent_student_id = linked.student_id;
+  }
+
+  req.session.regenerate((error) => {
+    if (error) return callback(error);
+    req.session.user = userSession;
+    req.session.cookie.maxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 12 * 60 * 60 * 1000;
+    req.session.save(callback);
+  });
+}
+
+function createUserAccount({ name, email, password, role }) {
+  if (getUserByEmail(email)) {
+    const error = new Error('An account with this email already exists.');
+    error.code = 'ACCOUNT_EXISTS';
+    throw error;
+  }
+  const passwordHash = bcrypt.hashSync(password, 12);
+  return db.prepare('INSERT INTO users (name, email, password_hash, role, status) VALUES (?, ?, ?, ?, ?)')
+    .run(name, email, passwordHash, role, 'active');
+}
+
+function createMailTransporter() {
+  const { SMTP_HOST, SMTP_USER, SMTP_PASS } = process.env;
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+  const smtpPort = Number(process.env.SMTP_PORT || 587);
+  if (!Number.isInteger(smtpPort) || smtpPort < 1 || smtpPort > 65535) return null;
+  return nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: smtpPort,
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: { user: SMTP_USER, pass: SMTP_PASS }
+  });
 }
 
 function requireAuth(req, res, next) {
@@ -439,6 +613,24 @@ function buildUserProfile(user) {
   return null;
 }
 
+function hasValidImageSignature(filePath, mimeType) {
+  const bytes = fs.readFileSync(filePath);
+  if (mimeType === 'image/jpeg') return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (mimeType === 'image/png') return bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (mimeType === 'image/webp') return bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP';
+  return false;
+}
+
+function removeStoredProfilePhoto(photoPath) {
+  if (!photoPath) return;
+  const filename = path.basename(photoPath);
+  if (photoPath !== 'profile/' + filename && !photoPath.startsWith('/uploads/')) return;
+  const filePath = photoPath.startsWith('/uploads/')
+    ? path.join(uploadDir, filename)
+    : path.join(profileUploadDir, filename);
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+}
+
 function studentListData(year) {
   return db.prepare(`
     SELECT s.*, c.name AS class_name
@@ -461,8 +653,18 @@ function teacherListData() {
 
 app.use((req, res, next) => {
   res.locals.settings = getSettings();
+  const academicYears = db.prepare(`
+    SELECT academic_year AS year FROM students WHERE academic_year IS NOT NULL
+    UNION SELECT academic_year AS year FROM classes WHERE academic_year IS NOT NULL
+    UNION SELECT academic_year AS year FROM examinations WHERE academic_year IS NOT NULL
+    ORDER BY year DESC
+  `).all().map((row) => row.year);
+  if (!academicYears.includes(res.locals.settings.academic_year)) academicYears.unshift(res.locals.settings.academic_year);
+  res.locals.academicYears = academicYears;
+  res.locals.activeAcademicYear = academicYears.includes(req.query.year) ? req.query.year : res.locals.settings.academic_year;
   res.locals.user = req.session.user || null;
   res.locals.appTitle = APP_TITLE;
+  res.locals.googleClientId = googleClientId;
   res.locals.dashboardPath = dashboardPathForRole(req.session.user?.role);
   if (req.session.user) {
     res.locals.userProfile = buildUserProfile(req.session.user);
@@ -482,94 +684,223 @@ app.get('/contact', (req, res) => {
   res.render('contact');
 });
 
+function renderLogin(res, { status = 200, error = '', email = '', notice = '' } = {}) {
+  return res.status(status).render('login', { title: 'Sign in', error, email, notice, googleClientId, settings: getSettings() });
+}
+
+function renderRegistration(res, { status = 200, error = '', name = '', email = '', role = 'student' } = {}) {
+  return res.status(status).render('register', { title: 'Create account', error, name, email, role, googleClientId, settings: getSettings() });
+}
+
 app.get('/login', (req, res) => {
-  res.render('login', { title: 'Sign in', error: null, email: '', settings: getSettings() });
+  const notice = req.query.registered === '1'
+    ? 'Your account was created. Sign in to continue.'
+    : req.query.reset === '1' ? 'Your password was updated. Sign in with your new password.' : '';
+  renderLogin(res, { notice });
+});
+
+app.get('/register', (req, res) => {
+  renderRegistration(res);
+});
+
+app.post('/register', (req, res) => {
+  const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+  const email = normalizeEmail(req.body.email);
+  const password = typeof req.body.password === 'string' ? req.body.password : '';
+  const confirmPassword = typeof req.body.confirmPassword === 'string' ? req.body.confirmPassword : '';
+  const role = typeof req.body.role === 'string' ? req.body.role : '';
+  const formValues = { name, email, role };
+
+  if (name.length < 2 || name.length > 100) return renderRegistration(res, { status: 400, error: 'Enter a name between 2 and 100 characters.', ...formValues });
+  if (!isValidEmail(email)) return renderRegistration(res, { status: 400, error: 'Enter a valid email address.', ...formValues });
+  if (!['student', 'parent'].includes(role)) return renderRegistration(res, { status: 400, error: 'Choose an available account role.', ...formValues });
+  const passwordError = getPasswordError(password);
+  if (passwordError) return renderRegistration(res, { status: 400, error: passwordError, ...formValues });
+  if (password !== confirmPassword) return renderRegistration(res, { status: 400, error: 'The passwords do not match.', ...formValues });
+  if (req.body.acceptTerms !== 'on') return renderRegistration(res, { status: 400, error: 'Accept the terms and conditions to create an account.', ...formValues });
+
+  try {
+    createUserAccount({ name, email, password, role });
+    res.redirect('/login?registered=1');
+  } catch (error) {
+    if (error.code === 'ACCOUNT_EXISTS' || error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return renderRegistration(res, { status: 409, error: 'An account with this email already exists.', ...formValues });
+    }
+    console.error('Account registration failed:', error);
+    renderRegistration(res, { status: 503, error: 'Account creation is temporarily unavailable.', ...formValues });
+  }
 });
 
 app.post('/login', (req, res) => {
-  const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  const email = normalizeEmail(req.body.email);
   const password = typeof req.body.password === 'string' ? req.body.password : '';
-
-  if (!email || !password) {
-    return res.status(400).render('login', {
-      title: 'Sign in',
-      error: 'Enter your email address and password.',
-      email,
-      settings: getSettings()
-    });
+  if (!isValidEmail(email) || !password || password.length > 128) {
+    return renderLogin(res, { status: 400, error: 'Enter a valid email address and password.', email });
   }
 
   let user;
   try {
     user = getUserByEmail(email);
-    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-      return res.status(401).render('login', {
-        title: 'Sign in',
-        error: 'Email or password is incorrect. Check your details and try again.',
-        email,
-        settings: getSettings()
-      });
+    if (!user || !user.password_hash || !bcrypt.compareSync(password, user.password_hash)) {
+      return renderLogin(res, { status: 401, error: 'Email or password is incorrect. Check your details and try again.', email });
     }
   } catch (error) {
     console.error('Login authentication failed:', error);
-    return res.status(503).render('login', {
-      title: 'Sign in',
-      error: 'Sign-in is temporarily unavailable. Please try again shortly.',
-      email,
-      settings: getSettings()
-    });
+    return renderLogin(res, { status: 503, error: 'Sign-in is temporarily unavailable. Please try again shortly.', email });
   }
 
   if (user.status !== 'active') {
-    return res.status(403).render('login', {
-      title: 'Sign in',
-      error: 'This account is inactive. Contact a school administrator.',
-      email,
+    return renderLogin(res, { status: 403, error: 'This account is inactive. Contact a school administrator.', email });
+  }
+
+  createAuthenticatedSession(req, user, req.body.rememberMe === 'on', (error) => {
+    if (error) {
+      console.error('Could not establish login session:', error);
+      return renderLogin(res, { status: 503, error: 'Sign-in is temporarily unavailable. Please try again shortly.', email });
+    }
+    res.redirect(dashboardPathForRole(user.role));
+  });
+});
+
+app.post('/auth/google', async (req, res) => {
+  if (!googleOAuthClient) return res.status(503).json({ error: 'Google sign-in is not configured.' });
+  const credential = typeof req.body.credential === 'string' ? req.body.credential : '';
+  if (!credential || credential.length > 10000) return res.status(400).json({ error: 'Google credential is invalid.' });
+
+  try {
+    const ticket = await googleOAuthClient.verifyIdToken({ idToken: credential, audience: googleClientId });
+    const payload = ticket.getPayload();
+    if (!payload?.email_verified || !payload.email || !payload.sub) {
+      return res.status(401).json({ error: 'Google could not verify this email address.' });
+    }
+
+    const email = normalizeEmail(payload.email);
+    const user = getUserByEmail(email);
+    if (!user) return res.status(403).json({ error: 'Create an account with this email before continuing with Google.' });
+    if (user.status !== 'active') return res.status(403).json({ error: 'This account is inactive. Contact a school administrator.' });
+    if (user.google_sub && user.google_sub !== payload.sub) {
+      return res.status(409).json({ error: 'A different Google account is already linked to this email.' });
+    }
+    if (!user.google_sub) {
+      const linkResult = db.prepare('UPDATE users SET google_sub = ? WHERE id = ? AND google_sub IS NULL').run(payload.sub, user.id);
+      const linkedUser = db.prepare('SELECT google_sub FROM users WHERE id = ?').get(user.id);
+      if (!linkResult.changes && linkedUser?.google_sub !== payload.sub) {
+        return res.status(409).json({ error: 'A different Google account is already linked to this email.' });
+      }
+    }
+
+    createAuthenticatedSession(req, user, false, (error) => {
+      if (error) {
+        console.error('Could not establish Google login session:', error);
+        return res.status(503).json({ error: 'Google sign-in is temporarily unavailable.' });
+      }
+      res.json({ redirect: dashboardPathForRole(user.role) });
+    });
+  } catch (error) {
+    console.warn('Google ID token verification failed:', error.message);
+    res.status(401).json({ error: 'Google sign-in could not be verified. Please try again.' });
+  }
+});
+
+app.get('/forgot-password', (req, res) => {
+  res.render('forgot-password', { title: 'Forgot password', error: '', notice: '', email: '', settings: getSettings() });
+});
+
+app.post('/forgot-password', async (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  if (!isValidEmail(email)) {
+    return res.status(400).render('forgot-password', { title: 'Forgot password', error: 'Enter a valid email address.', notice: '', email, settings: getSettings() });
+  }
+
+  const transporter = createMailTransporter();
+  const appBaseUrl = process.env.APP_BASE_URL || (process.env.NODE_ENV === 'production' ? '' : `http://localhost:${PORT}`);
+  if (!transporter || !appBaseUrl) {
+    return res.render('forgot-password', {
+      title: 'Forgot password',
+      error: '',
+      notice: 'Password recovery is not configured yet. Contact the school administrator.',
+      email: '',
       settings: getSettings()
     });
   }
 
-  const userSession = {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    status: user.status
-  };
-  if (user.role === 'student') {
-    const profile = db.prepare('SELECT id FROM students WHERE user_id = ?').get(user.id);
-    if (profile) userSession.student_id = profile.id;
-  }
-  if (user.role === 'parent') {
-    const linked = db.prepare('SELECT student_id FROM parent_students WHERE parent_user_id = ? LIMIT 1').get(user.id);
-    if (linked) userSession.parent_student_id = linked.student_id;
-  }
+  const user = getUserByEmail(email);
+  if (user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const expiresAt = Date.now() + 30 * 60 * 1000;
+    const resetUrl = new URL('/reset-password', appBaseUrl);
+    resetUrl.searchParams.set('token', token);
+    db.transaction(() => {
+      db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
+      db.prepare('INSERT INTO password_reset_tokens (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)')
+        .run(tokenHash, user.id, expiresAt, Date.now());
+    })();
 
-  req.session.regenerate((error) => {
-    if (error) {
-      console.error('Could not establish login session:', error);
-      return res.status(503).render('login', {
-        title: 'Sign in',
-        error: 'Sign-in is temporarily unavailable. Please try again shortly.',
-        email,
-        settings: getSettings()
+    try {
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to: user.email,
+        subject: 'Reset your school account password',
+        text: `Hello ${user.name},\n\nUse this one-time link to reset your password. It expires in 30 minutes.\n\n${resetUrl.toString()}\n\nIf you did not request a reset, you can ignore this email.`
       });
+    } catch (error) {
+      db.prepare('DELETE FROM password_reset_tokens WHERE token_hash = ?').run(tokenHash);
+      console.error('Password reset email delivery failed:', error.message);
+      return res.status(503).render('forgot-password', { title: 'Forgot password', error: 'Password recovery email could not be delivered. Try again later.', notice: '', email: '', settings: getSettings() });
     }
+  }
 
-    req.session.user = userSession;
-    req.session.save((saveError) => {
-      if (saveError) {
-        console.error('Could not save login session:', saveError);
-        return res.status(503).render('login', {
-          title: 'Sign in',
-          error: 'Sign-in is temporarily unavailable. Please try again shortly.',
-          email,
-          settings: getSettings()
-        });
-      }
-      res.redirect(dashboardPathForRole(user.role));
-    });
+  res.render('forgot-password', {
+    title: 'Forgot password',
+    error: '',
+    notice: 'If an account exists for that address, a password reset link has been sent.',
+    email: '',
+    settings: getSettings()
   });
+});
+
+app.get('/reset-password', (req, res) => {
+  const token = typeof req.query.token === 'string' ? req.query.token : '';
+  const tokenHash = token.length === 64 ? crypto.createHash('sha256').update(token).digest('hex') : '';
+  const valid = tokenHash && db.prepare('SELECT 1 FROM password_reset_tokens WHERE token_hash = ? AND expires_at > ?').get(tokenHash, Date.now());
+  res.render('reset-password', {
+    title: 'Reset password',
+    error: valid ? '' : 'This password reset link is invalid or has expired.',
+    token: valid ? token : '',
+    settings: getSettings()
+  });
+});
+
+app.post('/reset-password', (req, res) => {
+  const token = typeof req.body.token === 'string' ? req.body.token : '';
+  const password = typeof req.body.password === 'string' ? req.body.password : '';
+  const confirmPassword = typeof req.body.confirmPassword === 'string' ? req.body.confirmPassword : '';
+  const tokenHash = token.length === 64 ? crypto.createHash('sha256').update(token).digest('hex') : '';
+  const reset = tokenHash
+    ? db.prepare('SELECT user_id FROM password_reset_tokens WHERE token_hash = ? AND expires_at > ?').get(tokenHash, Date.now())
+    : null;
+  const passwordError = getPasswordError(password);
+  if (!reset) return res.status(400).render('reset-password', { title: 'Reset password', error: 'This password reset link is invalid or has expired.', token: '', settings: getSettings() });
+  if (passwordError) return res.status(400).render('reset-password', { title: 'Reset password', error: passwordError, token, settings: getSettings() });
+  if (password !== confirmPassword) return res.status(400).render('reset-password', { title: 'Reset password', error: 'The passwords do not match.', token, settings: getSettings() });
+
+  const passwordHash = bcrypt.hashSync(password, 12);
+  db.transaction(() => {
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, reset.user_id);
+    db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(reset.user_id);
+    const sessions = db.prepare('SELECT sid, session_json FROM session_store').all();
+    for (const storedSession of sessions) {
+      try {
+        if (JSON.parse(storedSession.session_json).user?.id === reset.user_id) {
+          db.prepare('DELETE FROM session_store WHERE sid = ?').run(storedSession.sid);
+        }
+      } catch (_) {
+        db.prepare('DELETE FROM session_store WHERE sid = ?').run(storedSession.sid);
+      }
+    }
+  })();
+  res.redirect('/login?reset=1');
 });
 
 app.get('/logout', (req, res) => {
@@ -719,9 +1050,18 @@ app.post('/students/:id/delete', requireAuth, requireRole(['admin']), (req, res)
 });
 
 app.get('/teachers', requireAuth, requireRole(['admin', 'teacher']), (req, res) => {
-  const teachers = teacherListData();
+  const search = (req.query.search || '').trim();
+  const teachers = search
+    ? db.prepare(`
+        SELECT t.*, c.name AS class_name
+        FROM teachers t
+        LEFT JOIN classes c ON c.class_teacher_id = t.id
+        WHERE t.first_name LIKE ? OR t.last_name LIKE ? OR t.teacher_id LIKE ? OR t.subject LIKE ?
+        ORDER BY t.created_at DESC
+      `).all(...Array(4).fill(`%${search}%`))
+    : teacherListData();
   const classes = db.prepare('SELECT * FROM classes ORDER BY name ASC').all();
-  res.render('teachers', { title: 'Teachers', teachers, classes, user: req.session.user, settings: getSettings(), active: 'teachers' });
+  res.render('teachers', { title: 'Teachers', teachers, classes, search, user: req.session.user, settings: getSettings(), active: 'teachers' });
 });
 
 app.post('/teachers', requireAuth, requireRole(['admin']), (req, res) => {
@@ -878,9 +1218,47 @@ app.post('/announcements', requireAuth, requireRole(['admin']), (req, res) => {
   res.redirect('/announcements');
 });
 
+function renderSchoolSettings(res, { status = 200, accountError = '', accountNotice = '', accountName = '', accountEmail = '', accountRole = 'student' } = {}) {
+  return res.status(status).render('settings', {
+    title: 'School Settings',
+    settings: getSettings(),
+    user: res.locals.user,
+    accountError,
+    accountNotice,
+    accountName,
+    accountEmail,
+    accountRole,
+    active: 'settings'
+  });
+}
+
 app.get('/settings', requireAuth, requireRole(['admin']), (req, res) => {
-  const settings = getSettings();
-  res.render('settings', { title: 'School Settings', settings, user: req.session.user, active: 'settings' });
+  renderSchoolSettings(res, {
+    accountNotice: req.query.userCreated === '1' ? 'The account was created.' : ''
+  });
+});
+
+app.post('/admin/users', requireAuth, requireRole(['admin']), (req, res) => {
+  const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+  const email = normalizeEmail(req.body.email);
+  const password = typeof req.body.password === 'string' ? req.body.password : '';
+  const role = typeof req.body.role === 'string' ? req.body.role : '';
+  const values = { accountName: name, accountEmail: email, accountRole: role };
+  if (name.length < 2 || name.length > 100) return renderSchoolSettings(res, { status: 400, accountError: 'Enter a name between 2 and 100 characters.', ...values });
+  if (!isValidEmail(email)) return renderSchoolSettings(res, { status: 400, accountError: 'Enter a valid email address.', ...values });
+  if (!['admin', 'teacher', 'student', 'parent'].includes(role)) return renderSchoolSettings(res, { status: 400, accountError: 'Choose a valid system role.', ...values });
+  const passwordError = getPasswordError(password);
+  if (passwordError) return renderSchoolSettings(res, { status: 400, accountError: passwordError, ...values });
+  try {
+    createUserAccount({ name, email, password, role });
+    res.redirect('/settings?userCreated=1');
+  } catch (error) {
+    if (error.code === 'ACCOUNT_EXISTS' || error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return renderSchoolSettings(res, { status: 409, accountError: 'An account with this email already exists.', ...values });
+    }
+    console.error('Administrator account provisioning failed:', error);
+    renderSchoolSettings(res, { status: 503, accountError: 'Account creation is temporarily unavailable.', ...values });
+  }
 });
 
 app.post('/settings', requireAuth, requireRole(['admin']), upload.single('logo'), (req, res) => {
@@ -899,12 +1277,91 @@ app.get('/profile', requireAuth, (req, res) => {
   const children = user.role === 'parent' ? db.prepare(`
     SELECT s.* FROM parent_students ps JOIN students s ON s.id = ps.student_id WHERE ps.parent_user_id = ?
   `).all(user.id) : [];
-  res.render('profile', { title: 'My Profile', student, teacher, children, user, settings: getSettings(), active: 'profile' });
+  res.render('profile', { title: 'My Profile', student, teacher, children, user, photoError: req.query.photoError || '', settings: getSettings(), active: 'profile' });
+});
+
+app.post('/profile/photo', requireAuth, (req, res) => {
+  profileUpload.single('photo')(req, res, (uploadError) => {
+    if (uploadError) {
+      return res.redirect('/profile?photoError=' + encodeURIComponent(uploadError.message));
+    }
+    if (!req.file || !hasValidImageSignature(req.file.path, req.file.mimetype)) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.redirect('/profile?photoError=' + encodeURIComponent('The selected file is not a valid JPG, PNG, or WEBP image.'));
+    }
+
+    const photoPath = 'profile/' + req.file.filename;
+    const previousPhoto = db.prepare('SELECT profile_photo FROM users WHERE id = ?').get(req.session.user.id)?.profile_photo;
+    db.prepare('UPDATE users SET profile_photo = ? WHERE id = ?').run(photoPath, req.session.user.id);
+    req.session.user.profile_photo = photoPath;
+    removeStoredProfilePhoto(previousPhoto);
+    req.session.save((saveError) => {
+      if (saveError) return res.status(500).redirect('/profile?photoError=' + encodeURIComponent('The photo could not be saved to your session. Please try again.'));
+      res.redirect('/profile');
+    });
+  });
+});
+
+app.get('/profile/photo', requireAuth, (req, res) => {
+  const photoPath = db.prepare('SELECT profile_photo FROM users WHERE id = ?').get(req.session.user.id)?.profile_photo;
+  if (!photoPath || !photoPath.startsWith('profile/')) return res.sendStatus(404);
+  const filename = path.basename(photoPath);
+  const filePath = path.join(profileUploadDir, filename);
+  if (!fs.existsSync(filePath)) return res.sendStatus(404);
+  res.set('Cache-Control', 'private, no-store');
+  res.sendFile(filePath);
+});
+
+app.post('/profile/photo/remove', requireAuth, (req, res) => {
+  const previousPhoto = db.prepare('SELECT profile_photo FROM users WHERE id = ?').get(req.session.user.id)?.profile_photo;
+  db.prepare('UPDATE users SET profile_photo = NULL WHERE id = ?').run(req.session.user.id);
+  req.session.user.profile_photo = '';
+  removeStoredProfilePhoto(previousPhoto);
+  req.session.save((saveError) => {
+    if (saveError) return res.status(500).redirect('/profile?photoError=' + encodeURIComponent('The photo could not be removed from your session. Please try again.'));
+    res.redirect('/profile');
+  });
 });
 
 app.get('/api/dashboard', requireAuth, (req, res) => {
   const year = getAcademicYearContext(req);
   res.json(getDashboardStats(year));
+});
+
+const translationTargets = new Set(['am', 'om', 'ti', 'so', 'ar', 'fr', 'es', 'de', 'pt', 'sw', 'it', 'zh-CN', 'hi']);
+app.post('/api/translate', async (req, res) => {
+  const { language, texts } = req.body || {};
+  if (!translationTargets.has(language) || !Array.isArray(texts) || texts.length > 150 || texts.some((text) => typeof text !== 'string' || text.length > 500)) {
+    return res.status(400).json({ error: 'Invalid translation request.' });
+  }
+
+  const normalized = texts.map((text) => text.replace(/[\r\n]+/g, ' '));
+  if (normalized.reduce((total, text) => total + text.length, 0) > 5000) {
+    return res.status(413).json({ error: 'Translation request is too large.' });
+  }
+
+  try {
+    const translations = [];
+    for (let index = 0; index < normalized.length; index += 30) {
+      const batch = normalized.slice(index, index + 30);
+      const url = new URL('https://translate.googleapis.com/translate_a/single');
+      url.searchParams.set('client', 'gtx');
+      url.searchParams.set('sl', 'en');
+      url.searchParams.set('tl', language);
+      url.searchParams.set('dt', 't');
+      url.searchParams.set('q', batch.join('\n'));
+      const providerResponse = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (!providerResponse.ok) throw new Error('Translation service returned an error.');
+      const providerData = await providerResponse.json();
+      const translatedBatch = providerData[0].map((segment) => segment[0] || '').join('').split('\n');
+      if (translatedBatch.length !== batch.length) throw new Error('Translation service returned an incomplete result.');
+      translations.push(...translatedBatch);
+    }
+    res.json({ translations });
+  } catch (error) {
+    console.error('Page translation failed:', error.message);
+    res.status(502).json({ error: 'Translation is temporarily unavailable.' });
+  }
 });
 
 app.use((req, res) => {

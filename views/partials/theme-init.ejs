@@ -1,0 +1,8 @@
+<script>
+  try {
+    const savedTheme = localStorage.getItem('school-theme');
+    document.documentElement.dataset.theme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : 'dark';
+  } catch (error) {
+    console.warn('Saved theme could not be loaded:', error);
+  }
+</script>

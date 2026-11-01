@@ -3,14 +3,45 @@
 <div class="profile-panel">
   <div class="profile-header">
     <div class="profile-avatar big">
-      <span><%= user.name.slice(0, 1).toUpperCase() %></span>
+      <% if (user.profile_photo) { %>
+        <img data-profile-image src="/profile/photo" alt="Profile photo" />
+        <span data-profile-initial hidden><%= user.name.slice(0, 1).toUpperCase() %></span>
+      <% } else { %>
+        <img data-profile-image alt="Profile photo" hidden />
+        <span data-profile-initial><%= user.name.slice(0, 1).toUpperCase() %></span>
+      <% } %>
     </div>
     <div>
       <h2><%= user.name %></h2>
       <p><strong>Role:</strong> <%= user.role %></p>
       <p><strong>Email:</strong> <%= user.email %></p>
+      <% if (photoError) { %><div class="alert error" role="alert"><%= photoError %></div><% } %>
+      <form class="profile-photo-form" method="POST" action="/profile/photo" enctype="multipart/form-data" data-profile-photo-form>
+        <input data-profile-file type="file" name="photo" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" hidden />
+        <button class="secondary-btn" type="button" data-upload-photo>Upload Photo</button>
+        <button class="secondary-btn" type="button" data-open-camera>Take Photo</button>
+        <button class="primary-btn" type="submit" data-save-photo disabled>Save Photo</button>
+        <button class="secondary-btn" type="button" data-cancel-photo hidden>Cancel</button>
+      </form>
+      <% if (user.profile_photo) { %>
+        <form method="POST" action="/profile/photo/remove" data-remove-photo-form>
+          <button class="small-link danger" type="submit">Remove Photo</button>
+        </form>
+      <% } %>
     </div>
   </div>
+
+  <dialog class="camera-dialog" data-camera-dialog aria-labelledby="camera-title">
+    <div class="camera-dialog-content">
+      <h2 id="camera-title">Take a profile photo</h2>
+      <p data-camera-message role="status">Allow camera access to take a photo.</p>
+      <video data-camera-video autoplay playsinline></video>
+      <div class="camera-actions">
+        <button class="primary-btn" type="button" data-capture-photo>Capture Photo</button>
+        <button class="secondary-btn" type="button" data-close-camera>Cancel</button>
+      </div>
+    </div>
+  </dialog>
 
   <% if (student) { %>
     <div class="panel">

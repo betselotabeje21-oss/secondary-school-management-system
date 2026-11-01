@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Manage students, attendance, classes, and academic results in one place." />
   <title><%= title %></title>
-  <link rel="stylesheet" href="/css/styles.css" />
+  <%- include('partials/theme-init') %>
+  <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body class="public-page">
   <%- include('partials/public-nav', { active: 'home' }) %>
@@ -15,7 +16,7 @@
         <p class="eyebrow">Secondary School Management</p>
         <h1>Better tools for a brighter school community.</h1>
         <p>Manage students, attendance, classes, and academic results in one place. Keep your school connected and focused on what matters most: learning.</p>
-        <a class="primary-btn" href="/login">Sign In</a>
+        <a class="primary-btn" href="/login">Get Started</a>
       </div>
       <div class="hero-card" aria-label="School management overview">
         <div class="hero-card-top">
@@ -54,5 +55,6 @@
     <span><%= title %></span>
     <a href="/contact">Get in touch</a>
   </footer>
+  <script src="/js/app.js"></script>
 </body>
 </html>

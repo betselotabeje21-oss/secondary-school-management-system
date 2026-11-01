@@ -2,7 +2,7 @@
 
 <div class="toolbar">
   <form method="GET" action="/teachers" class="filter-form">
-    <input type="text" name="search" placeholder="Search teachers" />
+    <input type="text" name="search" value="<%= search || '' %>" placeholder="Search teachers" />
     <button type="submit" class="primary-btn">Search</button>
   </form>
 

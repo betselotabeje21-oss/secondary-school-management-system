@@ -4,3 +4,6 @@ node_modules/
 !.env.example
 dist/
 coverage/
+
+*.db-wal
+*.db-shm

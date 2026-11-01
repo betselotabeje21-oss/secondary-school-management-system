@@ -3,10 +3,31 @@
     <span class="public-brand-mark">S</span>
     <span><%= settings.school_name %></span>
   </a>
-  <nav class="public-nav" aria-label="Main navigation">
+  <div class="public-locale-tools">
+    <%- include('language-selector') %>
+  <section class="digital-clock" aria-label="Current time in Addis Ababa">
+    <span class="digital-clock-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"></rect><path d="M7.5 3v4M16.5 3v4M3.5 10h17M12 13v3l2 1"></path></svg>
+    </span>
+    <span class="digital-clock-copy">
+      <span class="digital-clock-day" data-clock-day></span>
+      <span class="digital-clock-date" data-clock-date></span>
+    </span>
+    <time class="digital-clock-time" data-clock-time></time>
+  </section>
+  </div>
+  <div class="public-header-actions">
+    <button class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
+      <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"></path></svg>
+      <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.7 8.7 0 1 0 20.2 15.1Z"></path></svg>
+    </button>
+    <button class="public-nav-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="public-navigation">
+      <img class="nav-icon" src="/icons/menu.svg" alt="" aria-hidden="true" />
+    </button>
+  </div>
+  <nav class="public-nav" id="public-navigation" aria-label="Main navigation">
     <a class="public-nav-link <%= active === 'home' ? 'active' : '' %>" href="/" <%= active === 'home' ? 'aria-current="page"' : '' %>>Home</a>
-    <a class="public-nav-link" href="/login">Sign In</a>
-    <a class="public-nav-link" href="/login">Login</a>
+    <a class="public-nav-link" href="/login">Log In</a>
     <a class="public-nav-link <%= active === 'about' ? 'active' : '' %>" href="/about" <%= active === 'about' ? 'aria-current="page"' : '' %>>About Us</a>
     <a class="public-nav-link <%= active === 'contact' ? 'active' : '' %>" href="/contact" <%= active === 'contact' ? 'aria-current="page"' : '' %>>Contact Us</a>
   </nav>

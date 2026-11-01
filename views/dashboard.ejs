@@ -7,57 +7,94 @@
       <span>Total Students</span>
       <strong><%= stats.totalStudents %></strong>
     </div>
-    <i>👨‍🎓</i>
+    <img class="stat-icon" src="/icons/graduation-cap.svg" alt="" aria-hidden="true" />
   </div>
   <div class="stat-card accent-green">
     <div>
       <span>Male / Female</span>
       <strong><%= stats.maleStudents %> / <%= stats.femaleStudents %></strong>
     </div>
-    <i>👥</i>
+    <img class="stat-icon" src="/icons/users-round.svg" alt="" aria-hidden="true" />
   </div>
   <div class="stat-card accent-orange">
     <div>
       <span>Teachers</span>
       <strong><%= stats.totalTeachers %></strong>
     </div>
-    <i>🧑‍🏫</i>
+    <img class="stat-icon" src="/icons/user-round.svg" alt="" aria-hidden="true" />
   </div>
   <div class="stat-card accent-purple">
     <div>
       <span>Classes</span>
       <strong><%= stats.totalClasses %></strong>
     </div>
-    <i>🏫</i>
+    <img class="stat-icon" src="/icons/school.svg" alt="" aria-hidden="true" />
   </div>
   <div class="stat-card accent-red">
     <div>
       <span>Present Today</span>
       <strong><%= stats.studentsPresent %></strong>
     </div>
-    <i>✅</i>
+    <img class="stat-icon" src="/icons/circle-check.svg" alt="" aria-hidden="true" />
   </div>
   <div class="stat-card accent-slate">
     <div>
       <span>Absent Today</span>
       <strong><%= stats.studentsAbsent %></strong>
     </div>
-    <i>❌</i>
+    <img class="stat-icon" src="/icons/circle-x.svg" alt="" aria-hidden="true" />
   </div>
   <div class="stat-card accent-yellow">
     <div>
       <span>Late Arrivals</span>
       <strong><%= stats.lateArrivals %></strong>
     </div>
-    <i>⏰</i>
+    <img class="stat-icon" src="/icons/clock.svg" alt="" aria-hidden="true" />
   </div>
   <div class="stat-card accent-cyan">
     <div>
       <span>Average Score</span>
       <strong><%= stats.averageScore %>%</strong>
     </div>
-    <i>📊</i>
+    <img class="stat-icon" src="/icons/chart-no-axes-column-increasing.svg" alt="" aria-hidden="true" />
   </div>
+</section>
+
+<section class="content-grid two-col dashboard-insights" aria-label="Attendance and academic performance">
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Attendance snapshot</h3>
+      <span class="eyebrow">Today</span>
+    </div>
+    <div class="chart-list">
+      <div class="chart-row">
+        <div><span>Present</span><strong><%= stats.studentsPresent %></strong></div>
+        <progress value="<%= stats.studentsPresent %>" max="<%= Math.max(stats.totalStudents, 1) %>" aria-label="Students present"></progress>
+      </div>
+      <div class="chart-row">
+        <div><span>Absent</span><strong><%= stats.studentsAbsent %></strong></div>
+        <progress class="warning" value="<%= stats.studentsAbsent %>" max="<%= Math.max(stats.totalStudents, 1) %>" aria-label="Students absent"></progress>
+      </div>
+      <div class="chart-row">
+        <div><span>Late</span><strong><%= stats.lateArrivals %></strong></div>
+        <progress class="danger" value="<%= stats.lateArrivals %>" max="<%= Math.max(stats.totalStudents, 1) %>" aria-label="Late arrivals"></progress>
+      </div>
+    </div>
+  </article>
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Academic performance</h3>
+      <span class="eyebrow"><%= stats.averageScore %>% average</span>
+    </div>
+    <div class="performance-chart">
+      <div><span>Average score</span><strong><%= stats.averageScore %>%</strong></div>
+      <progress value="<%= Number(stats.averageScore) %>" max="100" aria-label="Average score"></progress>
+      <div class="performance-summary">
+        <span><b><%= stats.passed %></b> passed</span>
+        <span><b><%= stats.failed %></b> below pass mark</span>
+      </div>
+    </div>
+  </article>
 </section>
 
 <div class="content-grid two-col">
@@ -135,7 +172,7 @@
   <div class="panel">
     <div class="panel-header">
       <h3>Upcoming Events</h3>
-      <a href="#" class="link-btn">Calendar</a>
+      <span class="eyebrow">School calendar</span>
     </div>
     <ul class="list-stack">
       <% if (stats.upcomingEvents && stats.upcomingEvents.length) { %>
@@ -240,5 +277,24 @@
     <% } %>
   </div>
 <% } %>
+
+<section class="panel activity-notifications" aria-label="Recent activity and notifications">
+  <div class="panel-header">
+    <h3>Recent activity</h3>
+    <img class="section-icon" src="/icons/activity.svg" alt="" aria-hidden="true" />
+  </div>
+  <% if (stats.activities && stats.activities.length) { %>
+    <ul class="list-stack">
+      <% stats.activities.forEach((activity) => { %>
+        <li>
+          <strong><%= activity.description %></strong>
+          <span><%= activity.type %> · <%= new Date(activity.created_at).toLocaleDateString('en-GB') %></span>
+        </li>
+      <% }) %>
+    </ul>
+  <% } else { %>
+    <p class="empty-state">No recent activity to display.</p>
+  <% } %>
+</section>
 
 <%- include('partials/footer') %>

@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= appTitle %></title>
-  <link rel="stylesheet" href="/css/styles.css" />
+  <%- include('theme-init') %>
+  <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -15,37 +16,38 @@
         </div>
       </div>
 
-      <nav class="main-nav">
-        <a class="nav-link <%= active === 'dashboard' ? 'active' : '' %>" href="<%= user ? dashboardPath : '/login' %>">Dashboard</a>
+      <nav class="main-nav" id="main-navigation">
+        <a class="nav-link <%= active === 'dashboard' ? 'active' : '' %>" href="<%= user ? dashboardPath : '/login' %>"><img class="nav-icon" src="/icons/layout-dashboard.svg" alt="" aria-hidden="true" /><span>Dashboard</span></a>
         <% if (user && ['admin','teacher'].includes(user.role)) { %>
-          <a class="nav-link <%= active === 'students' ? 'active' : '' %>" href="/students">Students</a>
-          <a class="nav-link <%= active === 'teachers' ? 'active' : '' %>" href="/teachers">Teachers</a>
-          <a class="nav-link <%= active === 'classes' ? 'active' : '' %>" href="/classes">Classes</a>
-          <a class="nav-link <%= active === 'subjects' ? 'active' : '' %>" href="/subjects">Subjects</a>
-          <a class="nav-link <%= active === 'attendance' ? 'active' : '' %>" href="/attendance">Attendance</a>
-          <a class="nav-link <%= active === 'examinations' ? 'active' : '' %>" href="/examinations">Examinations</a>
-          <a class="nav-link <%= active === 'reports' ? 'active' : '' %>" href="/reports">Reports</a>
-          <a class="nav-link <%= active === 'announcements' ? 'active' : '' %>" href="/announcements">Announcements</a>
+          <a class="nav-link <%= active === 'students' ? 'active' : '' %>" href="/students"><img class="nav-icon" src="/icons/users-round.svg" alt="" aria-hidden="true" /><span>Students</span></a>
+          <a class="nav-link <%= active === 'teachers' ? 'active' : '' %>" href="/teachers"><img class="nav-icon" src="/icons/graduation-cap.svg" alt="" aria-hidden="true" /><span>Teachers</span></a>
+          <a class="nav-link <%= active === 'classes' ? 'active' : '' %>" href="/classes"><img class="nav-icon" src="/icons/school.svg" alt="" aria-hidden="true" /><span>Classes</span></a>
+          <a class="nav-link <%= active === 'subjects' ? 'active' : '' %>" href="/subjects"><img class="nav-icon" src="/icons/book-open.svg" alt="" aria-hidden="true" /><span>Subjects</span></a>
+          <a class="nav-link <%= active === 'attendance' ? 'active' : '' %>" href="/attendance"><img class="nav-icon" src="/icons/calendar-check.svg" alt="" aria-hidden="true" /><span>Attendance</span></a>
+          <a class="nav-link <%= active === 'examinations' ? 'active' : '' %>" href="/examinations"><img class="nav-icon" src="/icons/clipboard-check.svg" alt="" aria-hidden="true" /><span>Examinations</span></a>
+          <a class="nav-link <%= active === 'reports' ? 'active' : '' %>" href="/reports"><img class="nav-icon" src="/icons/file-chart-column.svg" alt="" aria-hidden="true" /><span>Reports</span></a>
+          <a class="nav-link <%= active === 'announcements' ? 'active' : '' %>" href="/announcements"><img class="nav-icon" src="/icons/megaphone.svg" alt="" aria-hidden="true" /><span>Announcements</span></a>
         <% } else if (user && user.role === 'student') { %>
-          <a class="nav-link <%= active === 'profile' ? 'active' : '' %>" href="/profile">My Profile</a>
-          <a class="nav-link <%= active === 'reports' ? 'active' : '' %>" href="/reports">Report Card</a>
-          <a class="nav-link <%= active === 'announcements' ? 'active' : '' %>" href="/announcements">Announcements</a>
+          <a class="nav-link <%= active === 'profile' ? 'active' : '' %>" href="/profile"><img class="nav-icon" src="/icons/circle-user-round.svg" alt="" aria-hidden="true" /><span>My Profile</span></a>
+          <a class="nav-link <%= active === 'reports' ? 'active' : '' %>" href="/reports"><img class="nav-icon" src="/icons/file-chart-column.svg" alt="" aria-hidden="true" /><span>Report Card</span></a>
+          <a class="nav-link <%= active === 'announcements' ? 'active' : '' %>" href="/announcements"><img class="nav-icon" src="/icons/megaphone.svg" alt="" aria-hidden="true" /><span>Announcements</span></a>
         <% } else if (user && user.role === 'parent') { %>
-          <a class="nav-link <%= active === 'profile' ? 'active' : '' %>" href="/profile">Children</a>
-          <a class="nav-link <%= active === 'reports' ? 'active' : '' %>" href="/reports">Academic Results</a>
-          <a class="nav-link <%= active === 'announcements' ? 'active' : '' %>" href="/announcements">Announcements</a>
+          <a class="nav-link <%= active === 'profile' ? 'active' : '' %>" href="/profile"><img class="nav-icon" src="/icons/users-round.svg" alt="" aria-hidden="true" /><span>Children</span></a>
+          <a class="nav-link <%= active === 'reports' ? 'active' : '' %>" href="/reports"><img class="nav-icon" src="/icons/file-chart-column.svg" alt="" aria-hidden="true" /><span>Academic Results</span></a>
+          <a class="nav-link <%= active === 'announcements' ? 'active' : '' %>" href="/announcements"><img class="nav-icon" src="/icons/megaphone.svg" alt="" aria-hidden="true" /><span>Announcements</span></a>
         <% } %>
 
         <% if (user && user.role === 'admin') { %>
-          <a class="nav-link <%= active === 'settings' ? 'active' : '' %>" href="/settings">Settings</a>
+          <a class="nav-link <%= active === 'settings' ? 'active' : '' %>" href="/settings"><img class="nav-icon" src="/icons/settings.svg" alt="" aria-hidden="true" /><span>Settings</span></a>
         <% } %>
       </nav>
     </aside>
+    <button class="nav-backdrop" type="button" aria-label="Close navigation" hidden></button>
 
     <main class="main-panel">
       <header class="topbar">
         <div class="topbar-title">
-          <button class="nav-toggle" type="button">☰</button>
+          <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="main-navigation"><img src="/icons/menu.svg" alt="" aria-hidden="true" /></button>
           <div>
             <span class="eyebrow"><%= appTitle %></span>
             <h1><%= title %></h1>
@@ -53,17 +55,29 @@
         </div>
 
         <div class="topbar-actions">
-          <div class="pill">Academic year: <strong><%= settings.academic_year %></strong></div>
+          <%- include('language-selector') %>
+          <form class="academic-year-switcher" action="<%= dashboardPath %>" method="GET" data-submit-on-change>
+            <label class="visually-hidden" for="academic-year-select">Academic year</label>
+            <select id="academic-year-select" name="year" aria-label="Academic year">
+              <% academicYears.forEach((year) => { %><option value="<%= year %>" <%= year === activeAcademicYear ? 'selected' : '' %>><%= year %></option><% }) %>
+            </select>
+          </form>
+          <button class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
+            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"></path></svg>
+            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.7 8.7 0 1 0 20.2 15.1Z"></path></svg>
+          </button>
           <% if (user) { %>
-            <div class="user-menu">
-              <div class="avatar"><%= user.name.slice(0, 1).toUpperCase() %></div>
-              <div>
-                <strong><%= user.name %></strong>
-                <small><%= user.role %></small>
+            <details class="user-menu">
+              <summary>
+                <% if (user.profile_photo) { %><img class="avatar" src="/profile/photo" alt="" /><% } else { %><span class="avatar"><%= user.name.slice(0, 1).toUpperCase() %></span><% } %>
+                <span class="user-menu-identity"><strong><%= user.name %></strong><small><%= user.role %></small></span>
+                <img class="menu-chevron" src="/icons/chevron-down.svg" alt="" aria-hidden="true" />
+              </summary>
+              <div class="user-menu-popover">
+                <a href="/profile"><img src="/icons/circle-user-round.svg" alt="" aria-hidden="true" /><span>Profile</span></a>
+                <a href="/logout"><img src="/icons/log-out.svg" alt="" aria-hidden="true" /><span>Logout</span></a>
               </div>
-              <a class="small-link" href="/profile">Profile</a>
-              <a class="small-link danger" href="/logout">Logout</a>
-            </div>
+            </details>
           <% } %>
         </div>
       </header>
