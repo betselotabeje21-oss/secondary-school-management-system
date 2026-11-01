@@ -17,4 +17,27 @@
   </form>
 </div>
 
+<div class="panel account-provisioning">
+  <div class="panel-header"><h3>Create User Account</h3></div>
+  <p class="auth-help">Only administrators can provision teacher and administrator access.</p>
+  <% if (accountError) { %><div class="alert error" role="alert"><%= accountError %></div><% } %>
+  <% if (accountNotice) { %><div class="alert success" role="status"><%= accountNotice %></div><% } %>
+  <form method="POST" action="/admin/users" class="stack-form" data-auth-loading>
+    <div class="grid-two">
+      <label><span>Full Name</span><input type="text" name="name" value="<%= accountName || '' %>" minlength="2" maxlength="100" required /></label>
+      <label><span>Email Address</span><input type="email" name="email" value="<%= accountEmail || '' %>" maxlength="254" required /></label>
+      <label><span>Role</span>
+        <select name="role" required>
+          <option value="admin" <%= accountRole === 'admin' ? 'selected' : '' %>>Administrator</option>
+          <option value="teacher" <%= accountRole === 'teacher' ? 'selected' : '' %>>Teacher</option>
+          <option value="student" <%= accountRole === 'student' ? 'selected' : '' %>>Student</option>
+          <option value="parent" <%= accountRole === 'parent' ? 'selected' : '' %>>Parent</option>
+        </select>
+      </label>
+      <label><span>Temporary Password</span><input type="password" name="password" minlength="10" maxlength="128" autocomplete="new-password" required /></label>
+    </div>
+    <button class="primary-btn" type="submit">Create Account</button>
+  </form>
+</div>
+
 <%- include('partials/footer') %>

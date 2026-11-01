@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const Database = require('better-sqlite3');
 const nodemailer = require('nodemailer');
 const { OAuth2Client } = require('google-auth-library');
+const { rateLimit } = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -63,6 +64,45 @@ const profileUpload = multer({
 });
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim() || '';
 const googleOAuthClient = googleClientId ? new OAuth2Client(googleClientId) : null;
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (_, res) => renderLogin(res, { status: 429, error: 'Too many sign-in attempts. Wait a few minutes and try again.' })
+});
+const registrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (_, res) => renderRegistration(res, { status: 429, error: 'Too many account creation attempts. Try again later.' })
+});
+const googleLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (_, res) => res.status(429).json({ error: 'Too many Google sign-in attempts. Try again later.' })
+});
+const recoveryLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (_, res) => res.status(429).render('forgot-password', {
+    title: 'Forgot password', error: 'Too many recovery requests. Try again later.', notice: '', email: '', settings: getSettings()
+  })
+});
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (_, res) => res.status(429).render('reset-password', {
+    title: 'Reset password', error: 'Too many password updates. Try again later.', token: '', settings: getSettings()
+  })
+});
 
 const sessionSecret = process.env.SESSION_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'local-development-only-secret-change-before-deploy');
 if (!sessionSecret) {
@@ -319,6 +359,7 @@ function initializeDatabase() {
   if (!userColumns.includes('google_sub')) {
     db.exec('ALTER TABLE users ADD COLUMN google_sub TEXT');
   }
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL');
 
   db.transaction(() => {
     const legacyUsers = db.prepare("SELECT id, email FROM users WHERE lower(email) LIKE '%@bemilew.edu'").all();
@@ -703,7 +744,7 @@ app.get('/register', (req, res) => {
   renderRegistration(res);
 });
 
-app.post('/register', (req, res) => {
+app.post('/register', registrationLimiter, (req, res) => {
   const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
   const email = normalizeEmail(req.body.email);
   const password = typeof req.body.password === 'string' ? req.body.password : '';
@@ -731,7 +772,7 @@ app.post('/register', (req, res) => {
   }
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', loginLimiter, (req, res) => {
   const email = normalizeEmail(req.body.email);
   const password = typeof req.body.password === 'string' ? req.body.password : '';
   if (!isValidEmail(email) || !password || password.length > 128) {
@@ -762,7 +803,7 @@ app.post('/login', (req, res) => {
   });
 });
 
-app.post('/auth/google', async (req, res) => {
+app.post('/auth/google', googleLimiter, async (req, res) => {
   if (!googleOAuthClient) return res.status(503).json({ error: 'Google sign-in is not configured.' });
   const credential = typeof req.body.credential === 'string' ? req.body.credential : '';
   if (!credential || credential.length > 10000) return res.status(400).json({ error: 'Google credential is invalid.' });
@@ -806,7 +847,7 @@ app.get('/forgot-password', (req, res) => {
   res.render('forgot-password', { title: 'Forgot password', error: '', notice: '', email: '', settings: getSettings() });
 });
 
-app.post('/forgot-password', async (req, res) => {
+app.post('/forgot-password', recoveryLimiter, async (req, res) => {
   const email = normalizeEmail(req.body.email);
   if (!isValidEmail(email)) {
     return res.status(400).render('forgot-password', { title: 'Forgot password', error: 'Enter a valid email address.', notice: '', email, settings: getSettings() });
@@ -847,7 +888,6 @@ app.post('/forgot-password', async (req, res) => {
     } catch (error) {
       db.prepare('DELETE FROM password_reset_tokens WHERE token_hash = ?').run(tokenHash);
       console.error('Password reset email delivery failed:', error.message);
-      return res.status(503).render('forgot-password', { title: 'Forgot password', error: 'Password recovery email could not be delivered. Try again later.', notice: '', email: '', settings: getSettings() });
     }
   }
 
@@ -872,7 +912,7 @@ app.get('/reset-password', (req, res) => {
   });
 });
 
-app.post('/reset-password', (req, res) => {
+app.post('/reset-password', resetPasswordLimiter, (req, res) => {
   const token = typeof req.body.token === 'string' ? req.body.token : '';
   const password = typeof req.body.password === 'string' ? req.body.password : '';
   const confirmPassword = typeof req.body.confirmPassword === 'string' ? req.body.confirmPassword : '';
