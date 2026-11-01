@@ -1,0 +1,20 @@
+<%- include('partials/header') %>
+
+<div class="panel">
+  <div class="panel-header"><h3>School Configuration</h3></div>
+  <form method="POST" action="/settings" enctype="multipart/form-data" class="stack-form">
+    <div class="grid-two">
+      <label><span>Application title</span><input type="text" name="school_name" value="<%= settings.school_name %>" readonly /></label>
+      <label><span>Academic year</span><input type="text" name="academic_year" value="<%= settings.academic_year %>" /></label>
+      <label><span>Address</span><input type="text" name="address" value="<%= settings.address %>" /></label>
+      <label><span>Phone</span><input type="text" name="phone" value="<%= settings.phone %>" /></label>
+      <label><span>Email</span><input type="email" name="email" value="<%= settings.email %>" /></label>
+      <label><span>Pass mark</span><input type="number" name="pass_mark" value="<%= settings.pass_mark %>" /></label>
+      <label class="full-span"><span>Grading Scale</span><input type="text" name="grading_scale" value="<%= settings.grading_scale %>" /></label>
+      <label class="full-span"><span>School logo</span><input type="file" name="logo" accept="image/*" /></label>
+    </div>
+    <button type="submit" class="primary-btn">Save Settings</button>
+  </form>
+</div>
+
+<%- include('partials/footer') %>

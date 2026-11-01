@@ -1,0 +1,244 @@
+<%- include('partials/header') %>
+
+<% if (['admin', 'teacher'].includes(user.role)) { %>
+<section class="stats-grid">
+  <div class="stat-card accent-blue">
+    <div>
+      <span>Total Students</span>
+      <strong><%= stats.totalStudents %></strong>
+    </div>
+    <i>👨‍🎓</i>
+  </div>
+  <div class="stat-card accent-green">
+    <div>
+      <span>Male / Female</span>
+      <strong><%= stats.maleStudents %> / <%= stats.femaleStudents %></strong>
+    </div>
+    <i>👥</i>
+  </div>
+  <div class="stat-card accent-orange">
+    <div>
+      <span>Teachers</span>
+      <strong><%= stats.totalTeachers %></strong>
+    </div>
+    <i>🧑‍🏫</i>
+  </div>
+  <div class="stat-card accent-purple">
+    <div>
+      <span>Classes</span>
+      <strong><%= stats.totalClasses %></strong>
+    </div>
+    <i>🏫</i>
+  </div>
+  <div class="stat-card accent-red">
+    <div>
+      <span>Present Today</span>
+      <strong><%= stats.studentsPresent %></strong>
+    </div>
+    <i>✅</i>
+  </div>
+  <div class="stat-card accent-slate">
+    <div>
+      <span>Absent Today</span>
+      <strong><%= stats.studentsAbsent %></strong>
+    </div>
+    <i>❌</i>
+  </div>
+  <div class="stat-card accent-yellow">
+    <div>
+      <span>Late Arrivals</span>
+      <strong><%= stats.lateArrivals %></strong>
+    </div>
+    <i>⏰</i>
+  </div>
+  <div class="stat-card accent-cyan">
+    <div>
+      <span>Average Score</span>
+      <strong><%= stats.averageScore %>%</strong>
+    </div>
+    <i>📊</i>
+  </div>
+</section>
+
+<div class="content-grid two-col">
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Recent Student Registrations</h3>
+      <a href="/students" class="link-btn">View all</a>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>ID</th>
+          <th>Grade</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (stats.recentStudents && stats.recentStudents.length) { %>
+          <% stats.recentStudents.forEach((student) => { %>
+            <tr>
+              <td><%= student.first_name %> <%= student.last_name %></td>
+              <td><%= student.student_id %></td>
+              <td><%= student.grade %></td>
+              <td><span class="status-badge success"><%= student.enrollment_status %></span></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="4">No registrations available.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Upcoming Examinations</h3>
+      <a href="/examinations" class="link-btn">Open exams</a>
+    </div>
+    <ul class="list-stack">
+      <% if (stats.upcomingExams && stats.upcomingExams.length) { %>
+        <% stats.upcomingExams.forEach((exam) => { %>
+          <li>
+            <strong><%= exam.name %></strong>
+            <span><%= exam.subject_name %> • <%= exam.type %> • <%= new Date(exam.exam_date).toLocaleDateString('en-GB') %></span>
+          </li>
+        <% }) %>
+      <% } else { %>
+        <li>No upcoming examinations yet.</li>
+      <% } %>
+    </ul>
+  </div>
+</div>
+
+<div class="content-grid two-col">
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Recent Announcements</h3>
+      <a href="/announcements" class="link-btn">All</a>
+    </div>
+    <ul class="list-stack">
+      <% if (stats.recentAnnouncements && stats.recentAnnouncements.length) { %>
+        <% stats.recentAnnouncements.forEach((item) => { %>
+          <li>
+            <strong><%= item.title %></strong>
+            <span><%= item.message %></span>
+          </li>
+        <% }) %>
+      <% } else { %>
+        <li>No announcements yet.</li>
+      <% } %>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Upcoming Events</h3>
+      <a href="#" class="link-btn">Calendar</a>
+    </div>
+    <ul class="list-stack">
+      <% if (stats.upcomingEvents && stats.upcomingEvents.length) { %>
+        <% stats.upcomingEvents.forEach((event) => { %>
+          <li>
+            <strong><%= event.title %></strong>
+            <span><%= new Date(event.event_date).toLocaleDateString('en-GB') %> • <%= event.description %></span>
+          </li>
+        <% }) %>
+      <% } else { %>
+        <li>No upcoming events scheduled.</li>
+      <% } %>
+    </ul>
+  </div>
+</div>
+<% } %>
+
+<% if (user.role === 'student') { %>
+  <div class="panel">
+    <div class="panel-header">
+      <h3>My Student Profile</h3>
+      <% if (profile) { %><a href="/students/<%= profile.id %>" class="link-btn">View profile</a><% } %>
+    </div>
+    <% if (profile) { %>
+      <p><strong><%= profile.student_id %></strong> · <%= profile.grade %> <%= profile.section %></p>
+    <% } else { %>
+      <p>No student profile is linked to this account yet.</p>
+    <% } %>
+  </div>
+  <div class="content-grid two-col">
+    <div class="panel">
+      <div class="panel-header">
+        <h3>My Attendance</h3>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (ownAttendance && ownAttendance.length) { %>
+            <% ownAttendance.forEach((entry) => { %>
+              <tr>
+                <td><%= new Date(entry.attendance_date).toLocaleDateString('en-GB') %></td>
+                <td><span class="status-badge <%= entry.status === 'Present' ? 'success' : entry.status === 'Late' ? 'warning' : 'danger' %>"><%= entry.status %></span></td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr><td colspan="2">No attendance entries yet.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <h3>Recent Results</h3>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>Exam</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (ownGrades && ownGrades.length) { %>
+            <% ownGrades.forEach((entry) => { %>
+              <tr>
+                <td><%= entry.subject_name %></td>
+                <td><%= entry.name %></td>
+                <td><%= entry.marks %></td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr><td colspan="3">No exam records yet.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
+
+<% if (user.role === 'parent') { %>
+  <div class="panel">
+    <div class="panel-header"><h3>Linked Children</h3></div>
+    <% if (childRows && childRows.length) { %>
+      <div class="content-grid two-col">
+        <% childRows.forEach((child) => { %>
+          <div class="panel">
+            <strong><%= child.first_name %> <%= child.last_name %></strong>
+            <p><%= child.student_id %> · <%= child.grade %> <%= child.section %></p>
+            <a href="/students/<%= child.id %>" class="link-btn">View records</a>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p>No children are linked to this parent account.</p>
+    <% } %>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

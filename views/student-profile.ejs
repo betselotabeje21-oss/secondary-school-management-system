@@ -1,0 +1,92 @@
+<%- include('partials/header') %>
+
+<div class="profile-panel">
+  <div class="profile-header">
+    <div class="profile-avatar">
+      <% if (student.photo) { %>
+        <img src="<%= student.photo %>" alt="Student photo" />
+      <% } else { %>
+        <span><%= student.first_name.slice(0, 1).toUpperCase() %></span>
+      <% } %>
+    </div>
+    <div>
+      <h2><%= student.first_name %> <%= student.last_name %></h2>
+      <p><strong>Student ID:</strong> <%= student.student_id %></p>
+      <p><strong>Grade:</strong> <%= student.grade %> / <%= student.section %></p>
+    </div>
+  </div>
+
+  <div class="content-grid two-col">
+    <div class="panel">
+      <div class="panel-header"><h3>Student Details</h3></div>
+      <ul class="detail-list">
+        <li><span>Gender</span><strong><%= student.gender %></strong></li>
+        <li><span>Date of birth</span><strong><%= student.dob ? new Date(student.dob).toLocaleDateString('en-GB') : '—' %></strong></li>
+        <li><span>Address</span><strong><%= student.address || '—' %></strong></li>
+        <li><span>Phone</span><strong><%= student.phone || '—' %></strong></li>
+        <li><span>Parent</span><strong><%= student.parent_name || '—' %></strong></li>
+        <li><span>Emergency</span><strong><%= student.emergency_contact || '—' %></strong></li>
+      </ul>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h3>Recent Attendance</h3></div>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (attendance && attendance.length) { %>
+            <% attendance.forEach((entry) => { %>
+              <tr>
+                <td><%= new Date(entry.attendance_date).toLocaleDateString('en-GB') %></td>
+                <td><span class="status-badge <%= entry.status === 'Present' ? 'success' : entry.status === 'Late' ? 'warning' : 'danger' %>"><%= entry.status %></span></td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr><td colspan="2">No attendance records.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h3>Assessment Results</h3></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Exam</th>
+          <th>Subject</th>
+          <th>Type</th>
+          <th>Marks</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (records && records.length) { %>
+          <% records.forEach((record) => { %>
+            <tr>
+              <td><%= record.exam_name %></td>
+              <td><%= record.subject_name %></td>
+              <td><%= record.exam_type %></td>
+              <td><%= record.marks %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="4">No results recorded yet.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (user.role === 'admin') { %>
+    <form method="POST" action="/students/<%= student.id %>/delete" class="inline-delete" onsubmit="return confirm('Delete this student?');">
+      <button type="submit" class="primary-btn danger">Delete Student</button>
+    </form>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

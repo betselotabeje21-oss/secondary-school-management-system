@@ -1,0 +1,63 @@
+<%- include('partials/header') %>
+
+<div class="profile-panel">
+  <div class="profile-header">
+    <div class="profile-avatar big">
+      <span><%= user.name.slice(0, 1).toUpperCase() %></span>
+    </div>
+    <div>
+      <h2><%= user.name %></h2>
+      <p><strong>Role:</strong> <%= user.role %></p>
+      <p><strong>Email:</strong> <%= user.email %></p>
+    </div>
+  </div>
+
+  <% if (student) { %>
+    <div class="panel">
+      <div class="panel-header"><h3>Student Information</h3></div>
+      <ul class="detail-list">
+        <li><span>Student ID</span><strong><%= student.student_id %></strong></li>
+        <li><span>Grade</span><strong><%= student.grade %></strong></li>
+        <li><span>Section</span><strong><%= student.section %></strong></li>
+        <li><span>Enrollment</span><strong><%= student.enrollment_status %></strong></li>
+      </ul>
+    </div>
+  <% } %>
+
+  <% if (teacher) { %>
+    <div class="panel">
+      <div class="panel-header"><h3>Teacher Information</h3></div>
+      <ul class="detail-list">
+        <li><span>Teacher ID</span><strong><%= teacher.teacher_id %></strong></li>
+        <li><span>Qualification</span><strong><%= teacher.qualification %></strong></li>
+        <li><span>Subject</span><strong><%= teacher.subject %></strong></li>
+      </ul>
+    </div>
+  <% } %>
+
+  <% if (children && children.length) { %>
+    <div class="panel">
+      <div class="panel-header"><h3>Linked Students</h3></div>
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Grade</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% children.forEach((child) => { %>
+            <tr>
+              <td><%= child.first_name %> <%= child.last_name %></td>
+              <td><%= child.grade %></td>
+              <td><span class="status-badge success"><%= child.enrollment_status %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

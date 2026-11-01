@@ -1,0 +1,76 @@
+<%- include('partials/header') %>
+
+<div class="toolbar">
+  <% if (user.role === 'admin') { %>
+    <button class="primary-btn" onclick="document.getElementById('class-form').scrollIntoView({behavior:'smooth'})">Create Class</button>
+  <% } %>
+</div>
+
+<div class="content-grid two-col">
+  <div class="panel table-panel">
+    <div class="panel-header"><h3>Class List</h3></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Grade</th>
+          <th>Section</th>
+          <th>Teacher</th>
+          <th>Capacity</th>
+          <th>Students</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (classes && classes.length) { %>
+          <% classes.forEach((classItem) => { %>
+            <tr>
+              <td><%= classItem.name %></td>
+              <td><%= classItem.grade %></td>
+              <td><%= classItem.section %></td>
+              <td><%= classItem.teacher_name || 'Unassigned' %></td>
+              <td><%= classItem.capacity %></td>
+              <td><%= classItem.student_count || 0 %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="6">No classes available.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (user.role === 'admin') { %>
+    <div class="panel" id="class-form">
+      <div class="panel-header"><h3>New Class</h3></div>
+      <form method="POST" action="/classes" class="stack-form">
+        <div class="grid-two">
+          <label><span>Name</span><input type="text" name="name" required /></label>
+          <label><span>Grade</span>
+            <select name="grade">
+              <option value="Grade 9">Grade 9</option>
+              <option value="Grade 10">Grade 10</option>
+              <option value="Grade 11">Grade 11</option>
+              <option value="Grade 12">Grade 12</option>
+            </select>
+          </label>
+          <label><span>Section</span><input type="text" name="section" /></label>
+          <label><span>Academic year</span><input type="text" name="academic_year" value="<%= settings.academic_year %>" /></label>
+          <label><span>Class teacher</span>
+            <select name="class_teacher_id">
+              <option value="">Unassigned</option>
+              <% if (teachers && teachers.length) { %>
+                <% teachers.forEach((teacher) => { %>
+                  <option value="<%= teacher.id %>"><%= teacher.first_name %> <%= teacher.last_name %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </label>
+          <label><span>Capacity</span><input type="number" name="capacity" value="40" /></label>
+        </div>
+        <button type="submit" class="primary-btn">Save Class</button>
+      </form>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

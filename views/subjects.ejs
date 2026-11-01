@@ -1,0 +1,70 @@
+<%- include('partials/header') %>
+
+<div class="toolbar">
+  <% if (user.role === 'admin') { %>
+    <button class="primary-btn" onclick="document.getElementById('subject-form').scrollIntoView({behavior:'smooth'})">Add Subject</button>
+  <% } %>
+</div>
+
+<div class="content-grid two-col">
+  <div class="panel table-panel">
+    <div class="panel-header"><h3>Subjects</h3></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th>Grade</th>
+          <th>Teacher</th>
+          <th>Academic Year</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (subjects && subjects.length) { %>
+          <% subjects.forEach((subject) => { %>
+            <tr>
+              <td><%= subject.name %></td>
+              <td><%= subject.grade %></td>
+              <td><%= subject.teacher_name || 'Not assigned' %></td>
+              <td><%= subject.academic_year %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="4">No subjects found.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (user.role === 'admin') { %>
+    <div class="panel" id="subject-form">
+      <div class="panel-header"><h3>New Subject</h3></div>
+      <form method="POST" action="/subjects" class="stack-form">
+        <label><span>Subject name</span><input type="text" name="name" required /></label>
+        <div class="grid-two">
+          <label><span>Grade</span>
+            <select name="grade">
+              <option value="Grade 9">Grade 9</option>
+              <option value="Grade 10">Grade 10</option>
+              <option value="Grade 11">Grade 11</option>
+              <option value="Grade 12">Grade 12</option>
+            </select>
+          </label>
+          <label><span>Academic year</span><input type="text" name="academic_year" value="<%= settings.academic_year %>" /></label>
+        </div>
+        <label><span>Teacher</span>
+          <select name="teacher_id">
+            <option value="">Unassigned</option>
+            <% if (teachers && teachers.length) { %>
+              <% teachers.forEach((teacher) => { %>
+                <option value="<%= teacher.id %>"><%= teacher.first_name %> <%= teacher.last_name %></option>
+              <% }) %>
+            <% } %>
+          </select>
+        </label>
+        <button type="submit" class="primary-btn">Save Subject</button>
+      </form>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

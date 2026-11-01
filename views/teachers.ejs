@@ -1,0 +1,88 @@
+<%- include('partials/header') %>
+
+<div class="toolbar">
+  <form method="GET" action="/teachers" class="filter-form">
+    <input type="text" name="search" placeholder="Search teachers" />
+    <button type="submit" class="primary-btn">Search</button>
+  </form>
+
+  <% if (user.role === 'admin') { %>
+    <button class="primary-btn" onclick="document.getElementById('teacher-form').scrollIntoView({behavior:'smooth'})">Add Teacher</button>
+  <% } %>
+</div>
+
+<div class="content-grid two-col">
+  <div class="panel table-panel">
+    <div class="panel-header">
+      <h3>Teachers</h3>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>ID</th>
+          <th>Subject</th>
+          <th>Grade</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (teachers && teachers.length) { %>
+          <% teachers.forEach((teacher) => { %>
+            <tr>
+              <td><%= teacher.first_name %> <%= teacher.last_name %></td>
+              <td><%= teacher.teacher_id %></td>
+              <td><%= teacher.subject %></td>
+              <td><%= teacher.assigned_grade %></td>
+              <td><span class="status-badge success"><%= teacher.status %></span></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="5">No teachers found.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (user.role === 'admin') { %>
+    <div class="panel" id="teacher-form">
+      <div class="panel-header">
+        <h3>Register Teacher</h3>
+      </div>
+      <form method="POST" action="/teachers" class="stack-form">
+        <div class="grid-two">
+          <label><span>First name</span><input type="text" name="first_name" required /></label>
+          <label><span>Last name</span><input type="text" name="last_name" required /></label>
+          <label><span>Gender</span>
+            <select name="gender">
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+            </select>
+          </label>
+          <label><span>Phone</span><input type="tel" name="phone" /></label>
+          <label><span>Email</span><input type="email" name="email" /></label>
+          <label><span>Qualification</span><input type="text" name="qualification" /></label>
+          <label><span>Subject</span><input type="text" name="subject" /></label>
+          <label><span>Assigned grade</span>
+            <select name="assigned_grade">
+              <option value="Grade 9">Grade 9</option>
+              <option value="Grade 10">Grade 10</option>
+              <option value="Grade 11">Grade 11</option>
+              <option value="Grade 12">Grade 12</option>
+            </select>
+          </label>
+          <label><span>Status</span>
+            <select name="status">
+              <option value="Active">Active</option>
+              <option value="On Leave">On Leave</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </label>
+        </div>
+        <button type="submit" class="primary-btn">Save Teacher</button>
+      </form>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

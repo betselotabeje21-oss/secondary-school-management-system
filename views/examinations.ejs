@@ -1,0 +1,112 @@
+<%- include('partials/header') %>
+
+<div class="toolbar">
+  <% if (user.role === 'admin' || user.role === 'teacher') { %>
+    <button class="primary-btn" onclick="document.getElementById('exam-form').scrollIntoView({behavior:'smooth'})">Add Examination</button>
+  <% } %>
+</div>
+
+<div class="content-grid two-col">
+  <div class="panel table-panel">
+    <div class="panel-header"><h3>Examination Schedule</h3></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Subject</th>
+          <th>Class</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (exams && exams.length) { %>
+          <% exams.forEach((exam) => { %>
+            <tr>
+              <td><%= exam.name %></td>
+              <td><%= exam.type %></td>
+              <td><%= exam.subject_name %></td>
+              <td><%= exam.class_name %></td>
+              <td><%= new Date(exam.exam_date).toLocaleDateString('en-GB') %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="5">No examinations added yet.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h3>Record Marks</h3></div>
+    <form method="POST" action="/grades" class="stack-form">
+      <div class="grid-two">
+        <label><span>Student</span>
+          <select name="student_id">
+            <% if (students && students.length) { %>
+              <% students.forEach((student) => { %>
+                <option value="<%= student.id %>"><%= student.first_name %> <%= student.last_name %></option>
+              <% }) %>
+            <% } %>
+          </select>
+        </label>
+        <label><span>Examination</span>
+          <select name="exam_id">
+            <% if (exams && exams.length) { %>
+              <% exams.forEach((exam) => { %>
+                <option value="<%= exam.id %>"><%= exam.name %> (<%= exam.subject_name %>)</option>
+              <% }) %>
+            <% } %>
+          </select>
+        </label>
+        <label><span>Marks</span><input type="number" name="marks" min="0" max="100" required /></label>
+        <label><span>Remark</span><input type="text" name="remark" /></label>
+      </div>
+      <button type="submit" class="primary-btn">Save Marks</button>
+    </form>
+  </div>
+</div>
+
+<% if (user.role === 'admin' || user.role === 'teacher') { %>
+  <div class="panel" id="exam-form">
+    <div class="panel-header"><h3>Create Examination</h3></div>
+    <form method="POST" action="/examinations" class="stack-form">
+      <div class="grid-two">
+        <label><span>Name</span><input type="text" name="name" required /></label>
+        <label><span>Type</span>
+          <select name="type">
+            <option value="Quiz">Quiz</option>
+            <option value="Assignment">Assignment</option>
+            <option value="Test">Test</option>
+            <option value="Midterm">Midterm</option>
+            <option value="Final Exam">Final Exam</option>
+          </select>
+        </label>
+        <label><span>Subject</span>
+          <select name="subject_id">
+            <% if (subjects && subjects.length) { %>
+              <% subjects.forEach((subject) => { %>
+                <option value="<%= subject.id %>"><%= subject.name %></option>
+              <% }) %>
+            <% } %>
+          </select>
+        </label>
+        <label><span>Class</span>
+          <select name="class_id">
+            <% if (classes && classes.length) { %>
+              <% classes.forEach((classItem) => { %>
+                <option value="<%= classItem.id %>"><%= classItem.name %></option>
+              <% }) %>
+            <% } %>
+          </select>
+        </label>
+        <label><span>Academic year</span><input type="text" name="academic_year" value="<%= settings.academic_year %>" /></label>
+        <label><span>Maximum marks</span><input type="number" name="max_marks" value="100" /></label>
+        <label><span>Exam date</span><input type="date" name="exam_date" /></label>
+      </div>
+      <button type="submit" class="primary-btn">Save Examination</button>
+    </form>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

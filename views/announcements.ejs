@@ -1,0 +1,31 @@
+<%- include('partials/header') %>
+
+<% if (user.role === 'admin') { %>
+  <div class="panel">
+    <div class="panel-header"><h3>Publish Announcement</h3></div>
+    <form method="POST" action="/announcements" class="stack-form">
+      <label><span>Title</span><input type="text" name="title" required /></label>
+      <label><span>Message</span><textarea name="message" rows="4" required></textarea></label>
+      <button type="submit" class="primary-btn">Send</button>
+    </form>
+  </div>
+<% } %>
+
+<div class="panel">
+  <div class="panel-header"><h3>Announcements</h3></div>
+  <ul class="list-stack large">
+    <% if (messages && messages.length) { %>
+      <% messages.forEach((item) => { %>
+        <li>
+          <strong><%= item.title %></strong>
+          <span><%= item.message %></span>
+          <small>Posted <%= new Date(item.created_at).toLocaleDateString('en-GB') %> by <%= item.author_name || 'Administrator' %></small>
+        </li>
+      <% }) %>
+    <% } else { %>
+      <li>No announcements published yet.</li>
+    <% } %>
+  </ul>
+</div>
+
+<%- include('partials/footer') %>

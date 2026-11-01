@@ -1,0 +1,87 @@
+<%- include('partials/header') %>
+
+<div class="toolbar">
+  <form method="GET" action="/attendance" class="filter-form">
+    <input type="date" name="date" value="<%= dateFilter %>" />
+    <select name="classId">
+      <option value="all" <%= classFilter === 'all' ? 'selected' : '' %>>All classes</option>
+      <% if (classes && classes.length) { %>
+        <% classes.forEach((classItem) => { %>
+          <option value="<%= classItem.id %>" <%= String(classFilter) === String(classItem.id) ? 'selected' : '' %>><%= classItem.name %></option>
+        <% }) %>
+      <% } %>
+    </select>
+    <button type="submit" class="primary-btn">Filter</button>
+  </form>
+</div>
+
+<div class="content-grid two-col">
+  <div class="panel table-panel">
+    <div class="panel-header"><h3>Attendance Register</h3></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Class</th>
+          <th>Status</th>
+          <th>Remark</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (attendance && attendance.length) { %>
+          <% attendance.forEach((entry) => { %>
+            <tr>
+              <td><%= entry.first_name %> <%= entry.last_name %></td>
+              <td><%= entry.class_name || '—' %></td>
+              <td><span class="status-badge <%= entry.status === 'Present' ? 'success' : entry.status === 'Late' ? 'warning' : 'danger' %>"><%= entry.status %></span></td>
+              <td><%= entry.remark || '—' %></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="4">No attendance entries for the selected date.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (user.role === 'admin' || user.role === 'teacher') { %>
+    <div class="panel">
+      <div class="panel-header"><h3>Mark Attendance</h3></div>
+      <form method="POST" action="/attendance" class="stack-form">
+        <div class="grid-two">
+          <label><span>Student</span>
+            <select name="student_id">
+              <% if (students && students.length) { %>
+                <% students.forEach((student) => { %>
+                  <option value="<%= student.id %>"><%= student.first_name %> <%= student.last_name %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </label>
+          <label><span>Class</span>
+            <select name="class_id">
+              <% if (classes && classes.length) { %>
+                <% classes.forEach((classItem) => { %>
+                  <option value="<%= classItem.id %>"><%= classItem.name %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </label>
+          <label><span>Date</span><input type="date" name="attendance_date" value="<%= dateFilter %>" /></label>
+          <label><span>Status</span>
+            <select name="status">
+              <option value="Present">Present</option>
+              <option value="Absent">Absent</option>
+              <option value="Late">Late</option>
+              <option value="Excused">Excused</option>
+            </select>
+          </label>
+        </div>
+        <label><span>Remark</span><textarea name="remark" rows="3"></textarea></label>
+        <button type="submit" class="primary-btn">Save Attendance</button>
+      </form>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

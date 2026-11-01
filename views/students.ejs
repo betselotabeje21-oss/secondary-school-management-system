@@ -1,0 +1,113 @@
+<%- include('partials/header') %>
+
+<div class="toolbar">
+  <form method="GET" action="/students" class="filter-form">
+    <input type="text" name="search" value="<%= search %>" placeholder="Search by name or student ID" />
+    <select name="status">
+      <option value="All" <%= status === 'All' ? 'selected' : '' %>>All status</option>
+      <option value="Active" <%= status === 'Active' ? 'selected' : '' %>>Active</option>
+      <option value="Pending" <%= status === 'Pending' ? 'selected' : '' %>>Pending</option>
+      <option value="Transfer" <%= status === 'Transfer' ? 'selected' : '' %>>Transfer</option>
+      <option value="Archived" <%= status === 'Archived' ? 'selected' : '' %>>Archived</option>
+    </select>
+    <select name="gender">
+      <option value="All" <%= gender === 'All' ? 'selected' : '' %>>All genders</option>
+      <option value="Male" <%= gender === 'Male' ? 'selected' : '' %>>Male</option>
+      <option value="Female" <%= gender === 'Female' ? 'selected' : '' %>>Female</option>
+    </select>
+    <button type="submit" class="primary-btn">Search</button>
+  </form>
+
+  <% if (user.role === 'admin' || user.role === 'teacher') { %>
+    <button class="primary-btn" onclick="document.getElementById('student-form').scrollIntoView({behavior:'smooth'})">Add Student</button>
+  <% } %>
+</div>
+
+<div class="content-grid two-col">
+  <div class="panel table-panel">
+    <div class="panel-header">
+      <h3>Student Records</h3>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>ID</th>
+          <th>Grade</th>
+          <th>Class</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (students && students.length) { %>
+          <% students.forEach((student) => { %>
+            <tr>
+              <td><%= student.first_name %> <%= student.last_name %></td>
+              <td><%= student.student_id %></td>
+              <td><%= student.grade %></td>
+              <td><%= student.class_name || '—' %></td>
+              <td><span class="status-badge success"><%= student.enrollment_status %></span></td>
+              <td><a href="/students/<%= student.id %>" class="link-btn">View</a></td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="6">No student records found.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (user.role === 'admin' || user.role === 'teacher') { %>
+    <div class="panel" id="student-form">
+      <div class="panel-header">
+        <h3>Register New Student</h3>
+      </div>
+      <form method="POST" action="/students" enctype="multipart/form-data" class="stack-form">
+        <div class="grid-two">
+          <label><span>First name</span><input type="text" name="first_name" required /></label>
+          <label><span>Middle name</span><input type="text" name="middle_name" /></label>
+          <label><span>Last name</span><input type="text" name="last_name" required /></label>
+          <label><span>Gender</span>
+            <select name="gender" required>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </label>
+          <label><span>Date of birth</span><input type="date" name="dob" /></label>
+          <label><span>Admission date</span><input type="date" name="admission_date" /></label>
+          <label><span>Grade</span>
+            <select name="grade" required>
+              <option value="Grade 9">Grade 9</option>
+              <option value="Grade 10">Grade 10</option>
+              <option value="Grade 11">Grade 11</option>
+              <option value="Grade 12">Grade 12</option>
+            </select>
+          </label>
+          <label><span>Section</span><input type="text" name="section" placeholder="Science" /></label>
+          <label><span>Academic year</span><input type="text" name="academic_year" value="<%= settings.academic_year %>" /></label>
+          <label><span>Enrollment status</span>
+            <select name="enrollment_status">
+              <option value="Active">Active</option>
+              <option value="Pending">Pending</option>
+              <option value="Transfer">Transfer</option>
+              <option value="Archived">Archived</option>
+            </select>
+          </label>
+        </div>
+
+        <label><span>Address</span><textarea name="address" rows="3"></textarea></label>
+        <div class="grid-two">
+          <label><span>Phone</span><input type="tel" name="phone" /></label>
+          <label><span>Emergency contact</span><input type="text" name="emergency_contact" /></label>
+          <label><span>Parent/Guardian name</span><input type="text" name="parent_name" /></label>
+          <label><span>Parent phone</span><input type="tel" name="parent_phone" /></label>
+        </div>
+        <label><span>Student photo</span><input type="file" name="photo" accept="image/*" /></label>
+        <button type="submit" class="primary-btn">Save Student</button>
+      </form>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>
