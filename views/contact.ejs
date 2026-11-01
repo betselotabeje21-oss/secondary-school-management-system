@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact Us | <%= settings.school_name %></title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body class="public-page">
+  <%- include('partials/public-nav', { active: 'contact' }) %>
+  <main class="public-info">
+    <p class="eyebrow">Contact Us</p>
+    <h1>We’re here to help.</h1>
+    <p class="public-lead">For questions about school records, attendance, or your account, get in touch with the school office.</p>
+    <section class="public-info-card contact-card">
+      <h2><%= settings.school_name %></h2>
+      <% if (settings.address) { %><p><strong>Address</strong><br /><%= settings.address %></p><% } %>
+      <% if (settings.phone) { %><p><strong>Phone</strong><br /><a href="tel:<%= settings.phone %>"><%= settings.phone %></a></p><% } %>
+      <% if (settings.email) { %><p><strong>Email</strong><br /><a href="mailto:<%= settings.email %>"><%= settings.email %></a></p><% } %>
+      <% if (!settings.address && !settings.phone && !settings.email) { %><p>Please contact your school administrator for assistance.</p><% } %>
+    </section>
+  </main>
+  <footer class="public-footer"><a href="/">Home</a><a href="/about">About Us</a></footer>
+</body>
+</html>

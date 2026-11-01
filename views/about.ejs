@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About Us | <%= settings.school_name %></title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body class="public-page">
+  <%- include('partials/public-nav', { active: 'about' }) %>
+  <main class="public-info">
+    <p class="eyebrow">About Us</p>
+    <h1>A connected school community starts here.</h1>
+    <p class="public-lead">The Secondary School Student Information Management System brings the essential tools of school administration together in one clear, accessible place.</p>
+    <section class="public-info-card">
+      <h2>Supporting every role</h2>
+      <p>Administrators can coordinate school records and operations. Teachers can manage classroom information and assessments. Students and parents can access relevant profiles, attendance, results, and announcements through their own role-based accounts.</p>
+      <a class="primary-btn" href="/login">Sign In to your account</a>
+    </section>
+  </main>
+  <footer class="public-footer"><a href="/">Home</a><a href="/contact">Contact Us</a></footer>
+</body>
+</html>

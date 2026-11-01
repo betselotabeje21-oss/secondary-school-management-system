@@ -1,0 +1,13 @@
+<header class="public-header">
+  <a class="public-brand" href="/" aria-label="Home">
+    <span class="public-brand-mark">S</span>
+    <span><%= settings.school_name %></span>
+  </a>
+  <nav class="public-nav" aria-label="Main navigation">
+    <a class="public-nav-link <%= active === 'home' ? 'active' : '' %>" href="/" <%= active === 'home' ? 'aria-current="page"' : '' %>>Home</a>
+    <a class="public-nav-link" href="/login">Sign In</a>
+    <a class="public-nav-link" href="/login">Login</a>
+    <a class="public-nav-link <%= active === 'about' ? 'active' : '' %>" href="/about" <%= active === 'about' ? 'aria-current="page"' : '' %>>About Us</a>
+    <a class="public-nav-link <%= active === 'contact' ? 'active' : '' %>" href="/contact" <%= active === 'contact' ? 'aria-current="page"' : '' %>>Contact Us</a>
+  </nav>
+</header>

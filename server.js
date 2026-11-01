@@ -474,6 +474,14 @@ app.get('/', (req, res) => {
   res.render('home', { title: APP_TITLE });
 });
 
+app.get('/about', (req, res) => {
+  res.render('about');
+});
+
+app.get('/contact', (req, res) => {
+  res.render('contact');
+});
+
 app.get('/login', (req, res) => {
   res.render('login', { title: 'Sign in', error: null, email: '', settings: getSettings() });
 });

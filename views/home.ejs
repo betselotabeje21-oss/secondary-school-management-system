@@ -3,14 +3,56 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Manage students, attendance, classes, and academic results in one place." />
   <title><%= title %></title>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
-<body class="auth-page">
-  <main class="home-card">
-    <h1><%= title %></h1>
-    <p>Manage students, attendance, classes, and academic results in one place.</p>
-    <a class="primary-btn" href="/login">Sign in</a>
+<body class="public-page">
+  <%- include('partials/public-nav', { active: 'home' }) %>
+  <main>
+    <section class="public-hero">
+      <div class="public-hero-content">
+        <p class="eyebrow">Secondary School Management</p>
+        <h1>Better tools for a brighter school community.</h1>
+        <p>Manage students, attendance, classes, and academic results in one place. Keep your school connected and focused on what matters most: learning.</p>
+        <a class="primary-btn" href="/login">Sign In</a>
+      </div>
+      <div class="hero-card" aria-label="School management overview">
+        <div class="hero-card-top">
+          <span class="hero-card-icon">✦</span>
+          <span class="status-badge success">School at a glance</span>
+        </div>
+        <h2>Everything in one place</h2>
+        <p>Simple, organized tools for everyday school life.</p>
+        <div class="hero-highlights">
+          <div><span>01</span><strong>Student records</strong></div>
+          <div><span>02</span><strong>Attendance & results</strong></div>
+          <div><span>03</span><strong>School communications</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="public-features" aria-label="Platform features">
+      <article class="public-feature">
+        <span class="feature-number">01</span>
+        <h2>Stay organized</h2>
+        <p>Keep student, teacher, class, and subject information together and easy to find.</p>
+      </article>
+      <article class="public-feature">
+        <span class="feature-number">02</span>
+        <h2>Track progress</h2>
+        <p>Record attendance and assessments, and give each school community member a useful view.</p>
+      </article>
+      <article class="public-feature">
+        <span class="feature-number">03</span>
+        <h2>Stay connected</h2>
+        <p>Share announcements and important updates with your school community.</p>
+      </article>
+    </section>
   </main>
+  <footer class="public-footer">
+    <span><%= title %></span>
+    <a href="/contact">Get in touch</a>
+  </footer>
 </body>
 </html>

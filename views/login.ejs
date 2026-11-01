@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= settings.school_name %></title>
+  <title>Sign In | <%= settings.school_name %></title>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body class="auth-page">
+  <a class="back-home" href="/">← Back to Home</a>
   <div class="login-box">
     <div class="login-brand">
       <h1><%= settings.school_name %></h1>
@@ -15,7 +16,7 @@
     <form class="auth-form" method="POST" action="/login">
       <h2>Sign in</h2>
       <% if (error) { %>
-        <div class="alert error"><%= error %></div>
+        <div class="alert error" role="alert"><%= error %></div>
       <% } %>
 
       <label>
